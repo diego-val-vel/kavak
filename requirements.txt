@@ -1,17 +1,24 @@
+# Python
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 pydantic-settings==2.3.1
+asgi-lifespan==2.1.0
 
 # Database
 SQLAlchemy==2.0.31
 asyncpg==0.29.0
+aiosqlite==0.20.0
 
 # Redis
 redis[asyncio]==5.0.8
+fakeredis==2.23.2
 
-# OpenAI client
-openai==1.40.3
+# HTTP client
+httpx==0.27.0
+
+# OpenAI SDK
+openai==1.35.10
 
 # Testing
 pytest==8.3.2
-httpx==0.27.0
+pytest-asyncio==0.23.7

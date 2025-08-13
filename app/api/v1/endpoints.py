@@ -1,20 +1,36 @@
-# Define versioned API routes. Expose a minimal /chat endpoint stub.
+"""
+Chat API endpoint definitions.
 
-from fastapi import APIRouter
-from app.models.schemas import ChatRequest, ChatResponse, MessageItem
+Provides the /v1/chat route to handle both new and ongoing conversations.
+Integrates database persistence, Redis sliding window, and LLM-based responses.
+"""
+
+from fastapi import APIRouter, Depends
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.schemas import ChatRequest, ChatResponse
+from app.core.dependencies import get_db, get_redis
+from app.services.chat_service import ChatService
 
 router = APIRouter(prefix="/v1", tags=["chat"])
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(payload: ChatRequest) -> ChatResponse:
+async def chat_endpoint(
+    payload: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> ChatResponse:
     """
-    Accept a chat request and return a placeholder response.
-    This stub only echoes structure; business logic will be added later.
+    Processes a chat turn.
+
+    Workflow:
+    - Creates a new conversation if conversation_id is null.
+    - Persists the complete history in PostgreSQL.
+    - Maintains a 5-message sliding window in Redis for prompt context.
+    - Calls the LLM and returns the last 5 combined messages (most recent last).
     """
-    conv_id = payload.conversation_id or "tmp-conv-id"
-    history = [
-        MessageItem(role="user", message=payload.message),
-        MessageItem(role="bot", message="Acknowledged. Business logic pending."),
-    ]
-    return ChatResponse(conversation_id=conv_id, message=history)
+    service = ChatService()
+    response = await service.handle_message(payload=payload, db=db, redis=redis)
+    return response

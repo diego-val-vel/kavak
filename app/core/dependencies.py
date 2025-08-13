@@ -5,13 +5,13 @@ Expose lightweight FastAPI dependencies to acquire/release resources per request
 """
 
 from typing import AsyncGenerator
+
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 
-
-# Database: build async engine and session factory once
+# Build async engine and session factory once
 DATABASE_URL = settings.database_url
 engine = create_async_engine(
     DATABASE_URL,
@@ -27,22 +27,30 @@ SessionLocal = async_sessionmaker(
     class_=AsyncSession,
 )
 
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Yield an AsyncSession tied to the request lifecycle.
-    Ensure proper cleanup regardless of success or failure.
+
+    Contract:
+    - If the request handler (endpoint/servicio) termina sin excepciones,
+      hacemos COMMIT para persistir cambios.
+    - Si ocurre una excepción, hacemos ROLLBACK.
+    - Siempre cerramos la sesión al final.
     """
     async with SessionLocal() as session:
         try:
             yield session
+            await session.commit()
+        except Exception:
+            # Any error while handling the request, rollback
+            await session.rollback()
+            raise
         finally:
             await session.close()
 
 
-# Redis: create a single client instance (lazy) and reuse it
+# Redis create a single client instance (lazy) and reuse it
 _redis_client: Redis | None = None
-
 
 def get_redis() -> Redis:
     """

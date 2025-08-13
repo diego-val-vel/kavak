@@ -1,8 +1,17 @@
-from pydantic_settings import BaseSettings
+"""
+Application configuration settings.
+
+Loads configuration from environment variables using pydantic-settings.
+Provides a single shared instance for application-wide access.
+"""
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
-    """Load and store application configuration from environment variables."""
+    """Loads and stores application configuration from environment variables."""
 
+    # Application
     app_name: str = "Kavak Debate API"
     environment: str = "development"
     debug: bool = True
@@ -13,13 +22,20 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str
 
-    # OpenAI API
+    # OpenAI
     openai_api_key: str
+    openai_model: str = "gpt-4o-mini"
+    openai_timeout_seconds: int = 20
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # pydantic-settings configuration:
+    # - Load variables from a .env file
+    # - Ignore extra variables to avoid validation errors
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
-# Create a single instance to be imported across the application
+# Singleton settings instance for application-wide use
 settings = Settings()
